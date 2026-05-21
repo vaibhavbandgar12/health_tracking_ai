@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+venv/
+backend/venv/
+.env
+
+# Flask
+instance/
+.webassets-cache/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Vite
+.vite/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment configs
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# Coverage
+coverage/
+htmlcov/
+
+# ML model binaries
+*.h5
+*.pt
+*.pth
+*.joblib
+*.pkl
