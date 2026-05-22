@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
@@ -97,40 +98,49 @@ export function AuthProvider({ children }) {
   const [currentPrediction, setCurrentPrediction] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
-  // Load user and health history from LocalStorage on mount
+  // Load user and health history from API on mount or token changes
   useEffect(() => {
-    if (token) {
-      // Mock User Details
-      setUser({
-        name: localStorage.getItem('userName') || 'Vaibhav',
-        email: localStorage.getItem('userEmail') || 'vaibhav@example.com',
-        age: 26,
-        height: 178,
-        weight: 71.2,
-        gender: 'Male',
-        targetCalories: 2300,
-        targetWater: 3.0,
-        targetSleep: 8
-      });
+    let active = true;
 
-      // Load health history
-      const savedHistory = localStorage.getItem('mock_health_history');
-      if (savedHistory) {
-        const parsed = JSON.parse(savedHistory);
-        setHistory(parsed);
-        if (parsed.length > 0) {
-          setCurrentPrediction(parsed[0]);
-        }
-      } else {
-        localStorage.setItem('mock_health_history', JSON.stringify(DEFAULT_HISTORY));
-        setHistory(DEFAULT_HISTORY);
-        setCurrentPrediction(DEFAULT_HISTORY[0]);
+    const loadData = async () => {
+      if (!token) {
+        setUser(null);
+        setHistory([]);
+        setCurrentPrediction(null);
+        return;
       }
-    } else {
-      setUser(null);
-      setHistory([]);
-      setCurrentPrediction(null);
-    }
+
+      try {
+        // Fetch current user details
+        const userRes = await api.get('/auth/me');
+        if (!active) return;
+        setUser(userRes.data.user);
+
+        // Fetch health logs history
+        const historyRes = await api.get('/health/history');
+        if (!active) return;
+        const data = historyRes.data;
+        setHistory(data);
+        if (data.length > 0) {
+          setCurrentPrediction(data[0]);
+        } else {
+          setCurrentPrediction(null);
+        }
+      } catch (error) {
+        if (!active) return;
+        console.error('Error loading user profile or history from backend:', error);
+        // Automatically trigger logout on 401 Unauthorized errors
+        if (error.response && error.response.status === 401) {
+          logout();
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
   }, [token]);
 
   // Generate dynamic AI suggestions and alerts based on the latest health metrics
@@ -228,35 +238,39 @@ export function AuthProvider({ children }) {
 
   // Auth Functions
   const login = async (email, password) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const dummyToken = 'mock-jwt-token-key-12345';
-        const name = email.split('@')[0];
-        const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
-        
-        localStorage.setItem('token', dummyToken);
-        localStorage.setItem('userName', capitalizedName);
-        localStorage.setItem('userEmail', email);
-        
-        setToken(dummyToken);
-        resolve(true);
-      }, 800);
-    });
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { token, user } = res.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('userName', user.name);
+      localStorage.setItem('userEmail', user.email);
+      
+      setToken(token);
+      setUser(user);
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const signup = async (name, email, password) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const dummyToken = 'mock-jwt-token-key-12345';
-        
-        localStorage.setItem('token', dummyToken);
-        localStorage.setItem('userName', name);
-        localStorage.setItem('userEmail', email);
-        
-        setToken(dummyToken);
-        resolve(true);
-      }, 800);
-    });
+    try {
+      const res = await api.post('/auth/signup', { name, email, password });
+      const { token, user } = res.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('userName', user.name);
+      localStorage.setItem('userEmail', user.email);
+      
+      setToken(token);
+      setUser(user);
+      return true;
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
@@ -264,110 +278,79 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
     setToken(null);
+    setUser(null);
+    setHistory([]);
+    setCurrentPrediction(null);
   };
 
-  const updateProfile = (profileData) => {
-    if (user) {
-      const updatedUser = { ...user, ...profileData };
+  const updateProfile = async (profileData) => {
+    try {
+      const res = await api.put('/auth/profile', profileData);
+      const { token, user: updatedUser } = res.data;
+      
+      if (token) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('userName', updatedUser.name);
+        localStorage.setItem('userEmail', updatedUser.email);
+        setToken(token);
+      }
       setUser(updatedUser);
-      localStorage.setItem('userName', updatedUser.name);
-      localStorage.setItem('userEmail', updatedUser.email);
+      return true;
+    } catch (error) {
+      console.error('Update profile error:', error);
+      throw error;
     }
   };
 
-  // Add Health Record locally
-  const addRecord = (formData) => {
-    const weight = parseFloat(formData.weight);
-    const height = parseFloat(formData.height);
-    const age = parseInt(formData.age);
-    const sleep = parseFloat(formData.sleep_hours);
-    const calories = parseFloat(formData.calories_consumed);
-    const exercise = parseFloat(formData.exercise_minutes);
-    const heartRate = parseFloat(formData.heart_rate || 72);
-    const water = parseFloat(formData.water_intake || 2.0);
-    const gender = formData.gender || 'Male';
+  // Add Health Record via API
+  const addRecord = async (formData) => {
+    try {
+      const res = await api.post('/health/record', formData);
+      let newRecord;
+      if (res.data && res.data.success && res.data.data) {
+        // Real backend format response
+        const savedRecord = res.data.data;
+        newRecord = {
+          ...savedRecord,
+          created_at: savedRecord.created_at || new Date().toISOString(),
+          date: savedRecord.created_at || new Date().toISOString(),
+          bmi: res.data.bmi,
+          bmi_category: res.data.bmi_category,
+          calorie_needs: res.data.calorie_needs,
+          health_risk_score: res.data.health_risk_score,
+          recommendation_workout: res.data.recommendation_workout,
+          recommendation_diet: res.data.recommendation_diet,
+          recommendation_sleep: res.data.recommendation_sleep
+        };
+      } else {
+        // Mock API response (already decorated at the root)
+        newRecord = res.data;
+      }
 
-    // 1. BMI Calculation
-    const bmi = parseFloat((weight / Math.pow(height / 100, 2)).toFixed(2));
-    let bmiCategory = 'Normal weight';
-    if (bmi < 18.5) bmiCategory = 'Underweight';
-    else if (bmi >= 25 && bmi < 30) bmiCategory = 'Overweight';
-    else if (bmi >= 30) bmiCategory = 'Obesity';
-
-    // 2. Calorie Needs (Mifflin-St Jeor) + Exercise Adjustments
-    const bmr = gender === 'Male'
-      ? (10 * weight) + (6.25 * height) - (5 * age) + 5
-      : (10 * weight) + (6.25 * height) - (5 * age) - 161;
-    const calorieNeeds = Math.round(bmr * 1.2 + (exercise * 5));
-
-    // 3. Dynamic Health Risk Score
-    let healthScore = 100;
-    if (bmi < 18.5 || bmi >= 25) healthScore -= 10;
-    if (bmi >= 30) healthScore -= 10;
-    if (sleep < 7 || sleep > 9) healthScore -= 15;
-    if (heartRate < 60 || heartRate > 100) healthScore -= 15;
-    if (exercise < 30) healthScore -= 10;
-    if (water < 2.0) healthScore -= 10;
-    healthScore = Math.max(10, Math.min(100, healthScore));
-
-    // 4. Recommendation Generation
-    let recWorkout = 'Excellent workout level! Keep maintaining consistency.';
-    if (exercise < 30) {
-      recWorkout = 'Try to aim for at least 30 minutes of moderate exercise daily.';
-    } else if (exercise > 90) {
-      recWorkout = 'Great exercise levels, but ensure you include recovery days to avoid burnout.';
+      const updatedHistory = [newRecord, ...history];
+      setHistory(updatedHistory);
+      setCurrentPrediction(newRecord);
+      return true;
+    } catch (error) {
+      console.error('Error adding health record:', error);
+      throw error;
     }
-
-    let recDiet = 'Maintain a balanced diet with plenty of fiber, leafy greens, and lean protein.';
-    if (bmiCategory === 'Obesity' || bmiCategory === 'Overweight') {
-      recDiet = 'Focus on a small calorie-deficit diet rich in whole foods, vegetables, and complex carbohydrates.';
-    } else if (bmiCategory === 'Underweight') {
-      recDiet = 'Increase intake of nutrient-dense whole foods, healthy fats (avocados, nuts), and lean proteins.';
-    }
-
-    let recSleep = 'Excellent sleep duration! Keep maintaining this routine.';
-    if (sleep < 7) {
-      recSleep = 'Aim for 7-8 hours of quality sleep to support cardiovascular recovery and cognitive function.';
-    } else if (sleep > 9) {
-      recSleep = 'Try to keep sleep duration between 7-9 hours to prevent lethargy and fatigue.';
-    }
-
-    const newRecord = {
-      _id: `rec-${Date.now()}`,
-      weight,
-      height,
-      age,
-      sleep_hours: sleep,
-      calories_consumed: calories,
-      exercise_minutes: exercise,
-      heart_rate: heartRate,
-      water_intake: water,
-      gender,
-      created_at: new Date().toISOString(),
-      date: new Date().toISOString(),
-      bmi,
-      bmi_category: bmiCategory,
-      calorie_needs: calorieNeeds,
-      health_risk_score: healthScore,
-      recommendation_workout: recWorkout,
-      recommendation_diet: recDiet,
-      recommendation_sleep: recSleep
-    };
-
-    const updatedHistory = [newRecord, ...history];
-    setHistory(updatedHistory);
-    localStorage.setItem('mock_health_history', JSON.stringify(updatedHistory));
-    setCurrentPrediction(newRecord);
   };
 
-  const deleteRecord = (id) => {
-    const updatedHistory = history.filter(rec => rec._id !== id);
-    setHistory(updatedHistory);
-    localStorage.setItem('mock_health_history', JSON.stringify(updatedHistory));
-    if (updatedHistory.length > 0) {
-      setCurrentPrediction(updatedHistory[0]);
-    } else {
-      setCurrentPrediction(null);
+  const deleteRecord = async (id) => {
+    try {
+      await api.delete(`/health/record/${id}`);
+      const updatedHistory = history.filter(rec => rec._id !== id);
+      setHistory(updatedHistory);
+      if (updatedHistory.length > 0) {
+        setCurrentPrediction(updatedHistory[0]);
+      } else {
+        setCurrentPrediction(null);
+      }
+      return true;
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      throw error;
     }
   };
 

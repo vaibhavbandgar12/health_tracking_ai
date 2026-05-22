@@ -12,11 +12,28 @@ const app = express();
 
 // Configure CORS
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or Node.js)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is localhost or 127.0.0.1 (any port)
+    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    if (isLocalhost) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+// Incoming Request Logger Middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
 
 // Body Parsing Middleware
 app.use(express.json());
@@ -90,7 +107,19 @@ app.post('/auth/signup', async (req, res) => {
     return res.status(201).json({
       message: 'User created successfully',
       token,
-      access_token: token
+      access_token: token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        age: user.age,
+        height: user.height,
+        weight: user.weight,
+        gender: user.gender,
+        targetCalories: user.targetCalories,
+        targetWater: user.targetWater,
+        targetSleep: user.targetSleep
+      }
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -122,10 +151,100 @@ app.post('/auth/login', async (req, res) => {
     // Return both configurations
     return res.status(200).json({
       token,
-      access_token: token
+      access_token: token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        age: user.age,
+        height: user.height,
+        weight: user.weight,
+        gender: user.gender,
+        targetCalories: user.targetCalories,
+        targetWater: user.targetWater,
+        targetSleep: user.targetSleep
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Profile Routes
+app.get('/auth/me', tokenRequired, async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    return res.status(200).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        age: user.age,
+        height: user.height,
+        weight: user.weight,
+        gender: user.gender,
+        targetCalories: user.targetCalories,
+        targetWater: user.targetWater,
+        targetSleep: user.targetSleep
+      }
+    });
+  } catch (error) {
+    console.error('Fetch user profile error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/auth/profile', tokenRequired, async (req, res) => {
+  try {
+    const { name, email, age, height, weight, gender, targetCalories, targetWater, targetSleep } = req.body;
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    if (email) {
+      const dup = await User.findOne({ email });
+      if (dup && dup._id.toString() !== user._id.toString()) {
+        return res.status(409).json({ error: 'Email already exists' });
+      }
+      user.email = email;
+    }
+    if (age !== undefined) user.age = Number(age);
+    if (height !== undefined) user.height = Number(height);
+    if (weight !== undefined) user.weight = Number(weight);
+    if (gender) user.gender = gender;
+    if (targetCalories !== undefined) user.targetCalories = Number(targetCalories);
+    if (targetWater !== undefined) user.targetWater = Number(targetWater);
+    if (targetSleep !== undefined) user.targetSleep = Number(targetSleep);
+
+    await user.save();
+
+    const token = generateToken({ user_id: user._id, email: user.email });
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      token,
+      access_token: token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        age: user.age,
+        height: user.height,
+        weight: user.weight,
+        gender: user.gender,
+        targetCalories: user.targetCalories,
+        targetWater: user.targetWater,
+        targetSleep: user.targetSleep
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -139,6 +258,8 @@ const computeHealthMetrics = (record) => {
   const calories_consumed = parseFloat(record.calories_consumed);
   const exercise_minutes = parseFloat(record.exercise_minutes);
   const heart_rate = record.heart_rate === null || record.heart_rate === '' || record.heart_rate === undefined ? 72 : parseFloat(record.heart_rate);
+  const water_intake = record.water_intake === null || record.water_intake === '' || record.water_intake === undefined ? 2.0 : parseFloat(record.water_intake);
+  const gender = record.gender || 'Male';
 
   // Calculations
   const bmi = parseFloat((weight / Math.pow(height / 100, 2)).toFixed(2));
@@ -148,7 +269,9 @@ const computeHealthMetrics = (record) => {
   else if (bmi >= 30) bmi_category = 'Obesity';
 
   // BMR (Mifflin-St Jeor Estimate) + Workout Adjustment
-  const bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  const bmr = gender === 'Male'
+    ? (10 * weight) + (6.25 * height) - (5 * age) + 5
+    : (10 * weight) + (6.25 * height) - (5 * age) - 161;
   const calorie_needs = Math.round(bmr * 1.2 + (exercise_minutes * 5));
 
   // Dynamic health risk score
@@ -158,6 +281,7 @@ const computeHealthMetrics = (record) => {
   if (sleep_hours < 7 || sleep_hours > 9) health_score -= 15;
   if (heart_rate < 60 || heart_rate > 100) health_score -= 15;
   if (exercise_minutes < 30) health_score -= 10;
+  if (water_intake < 2.0) health_score -= 10;
   health_score = Math.max(10, Math.min(100, health_score));
 
   // Recommendations
@@ -197,7 +321,7 @@ const computeHealthMetrics = (record) => {
 // Health Record Routes
 app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
   try {
-    const { weight, height, age, sleep_hours, calories_consumed, exercise_minutes, heart_rate } = req.body;
+    const { weight, height, age, sleep_hours, calories_consumed, exercise_minutes, heart_rate, water_intake, gender } = req.body;
     const user_id = req.user.user_id;
 
     // Validate inputs
@@ -208,6 +332,8 @@ app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
     const parsedCalories = parseFloat(calories_consumed);
     const parsedExercise = parseFloat(exercise_minutes);
     const parsedHeartRate = heart_rate === null || heart_rate === '' || heart_rate === undefined ? null : parseFloat(heart_rate);
+    const parsedWater = water_intake === null || water_intake === '' || water_intake === undefined ? 2.0 : parseFloat(water_intake);
+    const finalGender = gender || 'Male';
 
     if (isNaN(parsedWeight) || isNaN(parsedHeight) || isNaN(parsedAge) || isNaN(parsedSleep) || isNaN(parsedCalories) || isNaN(parsedExercise)) {
       return res.status(400).json({ error: 'Missing or invalid required fields' });
@@ -219,6 +345,7 @@ app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
     if (parsedSleep < 0 || parsedSleep > 24) return res.status(400).json({ error: 'Invalid sleep hours' });
     if (parsedCalories < 0) return res.status(400).json({ error: 'Invalid calories' });
     if (parsedExercise < 0) return res.status(400).json({ error: 'Invalid exercise minutes' });
+    if (parsedWater < 0) return res.status(400).json({ error: 'Invalid water intake' });
     if (parsedHeartRate !== null && (parsedHeartRate < 20 || parsedHeartRate > 250)) {
       return res.status(400).json({ error: 'Invalid heart rate' });
     }
@@ -233,7 +360,9 @@ app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
       sleep_hours: parsedSleep,
       calories_consumed: parsedCalories,
       exercise_minutes: parsedExercise,
-      heart_rate: finalHeartRate
+      heart_rate: finalHeartRate,
+      water_intake: parsedWater,
+      gender: finalGender
     });
     await record.save();
 
@@ -244,13 +373,17 @@ app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
       sleep_hours: parsedSleep,
       calories_consumed: parsedCalories,
       exercise_minutes: parsedExercise,
-      heart_rate: finalHeartRate
+      heart_rate: finalHeartRate,
+      water_intake: parsedWater,
+      gender: finalGender
     });
 
     const response_data = {
       success: true,
       message: 'Health record added successfully',
       data: {
+        _id: record._id.toString(),
+        user_id,
         weight: parsedWeight,
         height: parsedHeight,
         age: parsedAge,
@@ -258,6 +391,8 @@ app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
         calories_consumed: parsedCalories,
         exercise_minutes: parsedExercise,
         heart_rate: finalHeartRate,
+        water_intake: parsedWater,
+        gender: finalGender,
         health_score: metrics.health_risk_score,
         recommendations: metrics.recommendations
       },
@@ -271,19 +406,36 @@ app.post(['/health/record', '/health/add'], tokenRequired, async (req, res) => {
   }
 });
 
+app.delete('/health/record/:id', tokenRequired, async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    const recordId = req.params.id;
+
+    const result = await HealthRecord.deleteOne({ _id: recordId, user_id });
+
+    if (result && (result.deletedCount === 0 || result.n === 0)) {
+      return res.status(404).json({ error: 'Health record not found or unauthorized' });
+    }
+
+    return res.status(200).json({ success: true, message: 'Health record deleted successfully' });
+  } catch (error) {
+    console.error('Delete health record error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/health/history', tokenRequired, async (req, res) => {
   try {
     const user_id = req.user.user_id;
     const records = await HealthRecord.find({ user_id }).sort({ created_at: -1 });
 
-    // Handle both Mongoose models and plain JS objects from mock DB
     const formattedRecords = records.map(doc => {
       const obj = typeof doc.toObject === 'function' ? doc.toObject() : { ...doc };
       obj._id = obj._id.toString();
       if (obj.created_at) {
         const dateStr = typeof obj.created_at === 'string' ? obj.created_at : obj.created_at.toISOString();
         obj.created_at = dateStr;
-        obj.date = dateStr; // compatible with Charts.jsx
+        obj.date = dateStr;
       }
       const metrics = computeHealthMetrics(obj);
       return { ...obj, ...metrics };

@@ -29,7 +29,14 @@ try {
 const mongooseUserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  age: { type: Number, default: 26 },
+  height: { type: Number, default: 178 },
+  weight: { type: Number, default: 71.2 },
+  gender: { type: String, default: 'Male' },
+  targetCalories: { type: Number, default: 2300 },
+  targetWater: { type: Number, default: 3.0 },
+  targetSleep: { type: Number, default: 8 }
 });
 const MongooseUser = mongoose.model('User', mongooseUserSchema);
 
@@ -42,6 +49,8 @@ const mongooseHealthRecordSchema = new mongoose.Schema({
   calories_consumed: { type: Number, required: true },
   exercise_minutes: { type: Number, required: true },
   heart_rate: { type: Number, required: true },
+  water_intake: { type: Number, default: 2.0 },
+  gender: { type: String, default: 'Male' },
   created_at: { type: Date, default: Date.now }
 });
 const MongooseHealthRecord = mongoose.model('HealthRecord', mongooseHealthRecordSchema);
@@ -65,6 +74,13 @@ class MockUser {
     this.name = data.name;
     this.email = data.email;
     this.password = data.password;
+    this.age = data.age !== undefined ? data.age : 26;
+    this.height = data.height !== undefined ? data.height : 178;
+    this.weight = data.weight !== undefined ? data.weight : 71.2;
+    this.gender = data.gender || 'Male';
+    this.targetCalories = data.targetCalories !== undefined ? data.targetCalories : 2300;
+    this.targetWater = data.targetWater !== undefined ? data.targetWater : 3.0;
+    this.targetSleep = data.targetSleep !== undefined ? data.targetSleep : 8;
   }
 
   async save() {
@@ -80,7 +96,14 @@ class MockUser {
       _id: this._id,
       name: this.name,
       email: this.email,
-      password: this.password
+      password: this.password,
+      age: this.age,
+      height: this.height,
+      weight: this.weight,
+      gender: this.gender,
+      targetCalories: this.targetCalories,
+      targetWater: this.targetWater,
+      targetSleep: this.targetSleep
     });
     saveLocalData(data);
     return this;
@@ -110,6 +133,8 @@ class MockHealthRecord {
     this.calories_consumed = data.calories_consumed;
     this.exercise_minutes = data.exercise_minutes;
     this.heart_rate = data.heart_rate;
+    this.water_intake = data.water_intake !== undefined ? data.water_intake : 2.0;
+    this.gender = data.gender || 'Male';
     this.created_at = data.created_at ? new Date(data.created_at) : new Date();
   }
 
@@ -125,6 +150,8 @@ class MockHealthRecord {
       calories_consumed: this.calories_consumed,
       exercise_minutes: this.exercise_minutes,
       heart_rate: this.heart_rate,
+      water_intake: this.water_intake,
+      gender: this.gender,
       created_at: this.created_at.toISOString()
     });
     saveLocalData(data);
@@ -148,6 +175,19 @@ class MockHealthRecord {
         return records;
       }
     };
+  }
+
+  static async deleteOne(query) {
+    const data = getLocalData();
+    const initialLength = data.health_records.length;
+    data.health_records = data.health_records.filter(r => {
+      let match = true;
+      if (query._id && r._id !== query._id) match = false;
+      if (query.user_id && r.user_id !== query.user_id.toString()) match = false;
+      return !match;
+    });
+    saveLocalData(data);
+    return { deletedCount: initialLength - data.health_records.length };
   }
 }
 

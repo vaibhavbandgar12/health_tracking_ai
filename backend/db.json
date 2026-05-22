@@ -23,6 +23,70 @@
       "name": "abc",
       "email": "abc@gmail.com",
       "password": "$2a$10$W.F4MFTp2h08nTkUDBbRHOlCBjyGouBImJZIsfPQCoiIVg0WiAuvu"
+    },
+    {
+      "_id": "6uz8is0k5",
+      "name": "Integration Test User",
+      "email": "test_1779444901645@example.com",
+      "password": "$2a$10$Q1FARLb4kg571mQP3lMGvehF8yu55aFfS8xaC.vROg9NvC65XPUue"
+    },
+    {
+      "_id": "kdw1kt9d7",
+      "name": "Integration Test User",
+      "email": "test_1779444922160@example.com",
+      "password": "$2a$10$j6Qncyj84VkQPVNHD/k/Leh6XVnaYO7qk2XFx2yKF9JPl84mabVPC"
+    },
+    {
+      "_id": "oclhs0r3a",
+      "name": "Updated Name",
+      "email": "test_1779444938551@example.com",
+      "password": "$2a$10$2qwVChTniSNDl7OxFBUE5eZup3D/bmyIYzHHCOM5EBZzQGg50awb2",
+      "age": 29,
+      "height": 181,
+      "weight": 76,
+      "gender": "Female",
+      "targetCalories": 2400,
+      "targetWater": 3.5,
+      "targetSleep": 8.5
+    },
+    {
+      "_id": "bsg2uykgx",
+      "name": "Updated Name",
+      "email": "test_1779446363389@example.com",
+      "password": "$2a$10$Vjf3oX7nMtjm2EV4zJ0vmuC9miOUqAyWjcEtqEO8.yIMqQrruIPgO",
+      "age": 29,
+      "height": 181,
+      "weight": 76,
+      "gender": "Female",
+      "targetCalories": 2400,
+      "targetWater": 3.5,
+      "targetSleep": 8.5
+    },
+    {
+      "_id": "ceiew4rj7",
+      "name": "Updated Name",
+      "email": "test_1779446522878@example.com",
+      "password": "$2a$10$NRicyDO17673lnCy7GwSMeYzn19duewQHpMMz.2inboEo2ohTEUqO",
+      "age": 29,
+      "height": 181,
+      "weight": 76,
+      "gender": "Female",
+      "targetCalories": 2400,
+      "targetWater": 3.5,
+      "targetSleep": 8.5
+    },
+    {
+      "_id": "1abofrrkj",
+      "name": "vaibhav",
+      "email": "av@gmail.com",
+      "password": "$2a$10$A6kpssaFx2cZW183HLgbOu/uwzVfZ6aR1q/jrxiK2wn9fBx9ojJYS",
+      "age": 26,
+      "height": 178,
+      "weight": 71.2,
+      "gender": "Male",
+      "targetCalories": 2300,
+      "targetWater": 3,
+      "targetSleep": 8
     }
   ],
   "health_records": [
@@ -49,6 +113,86 @@
       "exercise_minutes": 45,
       "heart_rate": 68,
       "created_at": "2026-05-22T07:55:53.272Z"
+    },
+    {
+      "_id": "ixvq7v6f1",
+      "user_id": "6uz8is0k5",
+      "weight": 75,
+      "height": 180,
+      "age": 28,
+      "sleep_hours": 7.5,
+      "calories_consumed": 2200,
+      "exercise_minutes": 45,
+      "heart_rate": 68,
+      "created_at": "2026-05-22T10:15:02.060Z"
+    },
+    {
+      "_id": "4fa5fmo45",
+      "user_id": "kdw1kt9d7",
+      "weight": 75,
+      "height": 180,
+      "age": 28,
+      "sleep_hours": 7.5,
+      "calories_consumed": 2200,
+      "exercise_minutes": 45,
+      "heart_rate": 68,
+      "created_at": "2026-05-22T10:15:22.401Z"
+    },
+    {
+      "_id": "06mi1ef7z",
+      "user_id": "1abofrrkj",
+      "weight": 50,
+      "height": 173,
+      "age": 20,
+      "sleep_hours": 6,
+      "calories_consumed": 1234,
+      "exercise_minutes": 20,
+      "heart_rate": 72,
+      "water_intake": 2.7,
+      "gender": "Male",
+      "created_at": "2026-05-22T10:42:47.922Z"
+    },
+    {
+      "_id": "7fh7fe4nz",
+      "user_id": "1abofrrkj",
+      "weight": 50,
+      "height": 173,
+      "age": 20,
+      "sleep_hours": 6,
+      "calories_consumed": 1234,
+      "exercise_minutes": 35,
+      "heart_rate": 72,
+      "water_intake": 2.7,
+      "gender": "Male",
+      "created_at": "2026-05-22T10:43:04.135Z"
+    },
+    {
+      "_id": "zecsx825w",
+      "user_id": "1abofrrkj",
+      "weight": 50,
+      "height": 173,
+      "age": 20,
+      "sleep_hours": 6,
+      "calories_consumed": 1234,
+      "exercise_minutes": 35,
+      "heart_rate": 72,
+      "water_intake": 2.95,
+      "gender": "Male",
+      "created_at": "2026-05-22T10:43:05.937Z"
+    },
+    {
+      "_id": "qhd7uqnc0",
+      "user_id": "1abofrrkj",
+      "weight": 50,
+      "height": 173,
+      "age": 20,
+      "sleep_hours": 7,
+      "calories_consumed": 1234,
+      "exercise_minutes": 35,
+      "heart_rate": 72,
+      "water_intake": 2.95,
+      "gender": "Male",
+      "created_at": "2026-05-22T10:43:07.378Z"
     }
   ]
 }

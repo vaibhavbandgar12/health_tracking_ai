@@ -14,11 +14,15 @@ export default function Dashboard() {
 
   const handleSubmitRecord = async (formData) => {
     setLoading(true);
-    // Simulate AI Model diagnostics delay (1.5 seconds)
-    setTimeout(() => {
-      addRecord(formData);
+    try {
+      await addRecord(formData);
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to save health record. Please verify database connection.';
+      alert(errMsg);
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (

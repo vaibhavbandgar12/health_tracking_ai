@@ -25,7 +25,8 @@ export default function Signup() {
         setError('Failed to create account. Please verify input fields.');
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to create account. Please verify input fields.';
+      setError(errMsg);
       console.error(err);
     } finally {
       setLoading(false);

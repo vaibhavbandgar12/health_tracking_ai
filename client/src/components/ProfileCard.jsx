@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Calendar, Ruler, Scale, Flame, Droplet, Moon, Edit3 } from 'lucide-react';
+import { User, Mail, Calendar, Ruler, Scale, Flame, Droplet, Moon, Edit3, AlertCircle } from 'lucide-react';
 import Modal from './Modal';
 
 export default function ProfileCard() {
   const { user, updateProfile } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [updating, setUpdating] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -30,10 +32,20 @@ export default function ProfileCard() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateProfile(formData);
-    setModalOpen(false);
+    setError('');
+    setUpdating(true);
+    try {
+      await updateProfile(formData);
+      setModalOpen(false);
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to update profile. Please try again.';
+      setError(errMsg);
+      console.error(err);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   return (
@@ -152,8 +164,14 @@ export default function ProfileCard() {
       </div>
 
       {/* Edit Profile Modal Dialog */}
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Modify Profile Settings">
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); setError(''); }} title="Modify Profile Settings">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-rose-50 border border-rose-100 text-rose-800 p-3.5 rounded-xl text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
           <div>
             <label>Full Name</label>
             <input type="text" name="name" required value={formData.name} onChange={handleChange} />
@@ -206,11 +224,11 @@ export default function ProfileCard() {
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn btn-outline px-4 py-2 text-sm">
+            <button type="button" onClick={() => { setModalOpen(false); setError(''); }} className="btn btn-outline px-4 py-2 text-sm" disabled={updating}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary px-5 py-2 text-sm">
-              Save Changes
+            <button type="submit" className="btn btn-primary px-5 py-2 text-sm" disabled={updating}>
+              {updating ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
