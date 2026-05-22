@@ -1,102 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { LogOut, LayoutDashboard } from 'lucide-react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { LayoutDashboard, Sparkles, PlusCircle } from 'lucide-react';
 import MetricsCards from '../components/MetricsCards';
 import HealthInputForm from '../components/HealthInputForm';
 import Recommendations from '../components/Recommendations';
 import Charts from '../components/Charts';
+import NotificationCard from '../components/NotificationCard';
+import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:8000';
-
-export default function Dashboard({ setAuth }) {
-  const [history, setHistory] = useState([]);
-  const [currentPrediction, setCurrentPrediction] = useState(null);
+export default function Dashboard() {
+  const { history, currentPrediction, addRecord, user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/health/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setHistory(response.data);
-    } catch (error) {
-      if (error.response && error.response.status === 401) {
-        handleLogout();
-      }
-      console.error('Error fetching history:', error);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setAuth(false);
-  };
-
-  const handleSubmit = async (formData) => {
+  const handleSubmitRecord = async (formData) => {
     setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-
-      // Ensure numeric fields are numbers (backend expects numeric types)
-      const payload = {
-        weight: Number(formData.weight),
-        height: Number(formData.height),
-        age: Number(formData.age),
-        sleep_hours: Number(formData.sleep_hours),
-        calories_consumed: Number(formData.calories_consumed),
-        exercise_minutes: Number(formData.exercise_minutes),
-        heart_rate:
-          formData.heart_rate === '' || formData.heart_rate == null
-            ? null
-            : Number(formData.heart_rate)
-      };
-
-      const response = await axios.post(`${API_URL}/health/record`, payload, {
-
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      setCurrentPrediction(response.data);
-      fetchHistory(); // Refresh the chart
-    } catch (error) {
-      console.error('Error submitting record:', error);
-      alert('Failed to submit health record.');
-    } finally {
+    // Simulate AI Model diagnostics delay (1.5 seconds)
+    setTimeout(() => {
+      addRecord(formData);
       setLoading(false);
-    }
+    }, 1500);
   };
 
   return (
-    <div className="main-content">
-      <div className="dashboard-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <LayoutDashboard className="text-gradient" size={32} />
-          <h1>Health <span className="text-gradient">Dashboard</span></h1>
+    <div className="space-y-8 animate-in fade-in duration-300">
+      {/* Simulation Loader Overlay */}
+      <Loader isVisible={loading} />
+
+      {/* Header Info */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-800 font-display tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="text-primary w-8 h-8" />
+            <span>Health <span className="text-gradient">Dashboard</span></span>
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Welcome back, <span className="text-slate-700 font-semibold">{user?.name || 'User'}</span>. Here is your real-time wellness analysis.
+          </p>
         </div>
-        <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '0.5rem 1rem' }}>
-          <LogOut size={18} /> Logout
-        </button>
+
+        {/* Quick Date Display */}
+        <div className="text-right text-xs text-slate-500 bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl self-start sm:self-center">
+          <span>Reporting Period: </span>
+          <span className="text-primary font-semibold font-mono">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+        </div>
       </div>
 
+      {/* Primary Analytics Cards */}
       <MetricsCards prediction={currentPrediction} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4">
-          <HealthInputForm onSubmit={handleSubmit} loading={loading} />
-          <div className="mt-6">
-            <Recommendations prediction={currentPrediction} />
-          </div>
+      {/* Dashboard Body Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Column: Form and AI Recommendations */}
+        <div className="lg:col-span-5 space-y-8">
+          <HealthInputForm 
+            onSubmit={handleSubmitRecord} 
+            loading={loading} 
+            lastRecord={currentPrediction} 
+          />
+          
+          <Recommendations prediction={currentPrediction} />
         </div>
-        <div className="lg:col-span-8">
-          <Charts data={history} />
+
+        {/* Right Column: Graphs & Alerts */}
+        <div className="lg:col-span-7 space-y-8">
+          {/* Trends Charts */}
+          <div className="h-[380px]">
+            <Charts data={history} />
+          </div>
+
+          {/* AI Notifications Alerts */}
+          <NotificationCard />
         </div>
       </div>
     </div>

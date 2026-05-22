@@ -1,41 +1,56 @@
 import React from 'react';
-import { Dumbbell, Utensils, Moon } from 'lucide-react';
+import { Dumbbell, Utensils, Moon, Sparkles } from 'lucide-react';
 
 export default function Recommendations({ prediction }) {
   if (!prediction) return null;
 
   return (
-    <div className="glass card">
-      <h2>AI Recommendations</h2>
-      <ul className="recommendation-list">
-        <li className="recommendation-item">
-          <div className="reco-icon">
-            <Dumbbell size={20} />
+    <div className="glass p-5 space-y-4">
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <Sparkles className="w-5 h-5 text-emerald-600 animate-pulse" />
+        <h3 className="font-bold text-slate-800 font-display">AI Health Advice</h3>
+      </div>
+
+      <div className="space-y-4">
+        {/* Workout Recommendation */}
+        <div className="flex gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all group">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Dumbbell className="w-5 h-5" />
           </div>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Workout</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{prediction.recommendation_workout}</div>
+          <div className="min-w-0">
+            <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider">Exercise Plan</h4>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              {prediction.recommendation_workout}
+            </p>
           </div>
-        </li>
-        <li className="recommendation-item">
-          <div className="reco-icon" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)' }}>
-            <Utensils size={20} />
+        </div>
+
+        {/* Diet Recommendation */}
+        <div className="flex gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-amber-200 transition-all group">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Utensils className="w-5 h-5" />
           </div>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Diet</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{prediction.recommendation_diet}</div>
+          <div className="min-w-0">
+            <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider">Dietary Directives</h4>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              {prediction.recommendation_diet}
+            </p>
           </div>
-        </li>
-        <li className="recommendation-item">
-          <div className="reco-icon" style={{ color: '#8b5cf6', background: 'rgba(139, 92, 246, 0.1)' }}>
-            <Moon size={20} />
+        </div>
+
+        {/* Sleep Recommendation */}
+        <div className="flex gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all group">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Moon className="w-5 h-5" />
           </div>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Sleep</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{prediction.recommendation_sleep}</div>
+          <div className="min-w-0">
+            <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider">Sleep & Recovery</h4>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              {prediction.recommendation_sleep}
+            </p>
           </div>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
   );
 }

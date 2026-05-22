@@ -1,0 +1,54 @@
+{
+  "users": [
+    {
+      "_id": "yulxtif2o",
+      "name": "Integration Test User",
+      "email": "test_1779436483229@example.com",
+      "password": "$2a$10$999D0kH7lVhnzhoYk1BL4OoXQLgOXtJcAEGBkAxDDVxTiXhG8RQDO"
+    },
+    {
+      "_id": "fbroy1idz",
+      "name": "Integration Test User",
+      "email": "test_1779436553040@example.com",
+      "password": "$2a$10$/nLQM17E/t03AeRYY.8qwuTdjGpRH4QEAOH5BiW1eyFO7IagmVFxi"
+    },
+    {
+      "_id": "72d4dfxk2",
+      "name": "bandgarv867",
+      "email": "bandgarv867@gmail.com",
+      "password": "$2a$10$6DmlKlsxiLv8DvERWrzqxuCJGqHHED6iwoptKYP1XO1uFCmV6NcOC"
+    },
+    {
+      "_id": "ql4nvyl3u",
+      "name": "abc",
+      "email": "abc@gmail.com",
+      "password": "$2a$10$W.F4MFTp2h08nTkUDBbRHOlCBjyGouBImJZIsfPQCoiIVg0WiAuvu"
+    }
+  ],
+  "health_records": [
+    {
+      "_id": "m4srjk985",
+      "user_id": "yulxtif2o",
+      "weight": 75,
+      "height": 180,
+      "age": 28,
+      "sleep_hours": 7.5,
+      "calories_consumed": 2200,
+      "exercise_minutes": 45,
+      "heart_rate": 68,
+      "created_at": "2026-05-22T07:54:43.473Z"
+    },
+    {
+      "_id": "k9lm5lyv6",
+      "user_id": "fbroy1idz",
+      "weight": 75,
+      "height": 180,
+      "age": 28,
+      "sleep_hours": 7.5,
+      "calories_consumed": 2200,
+      "exercise_minutes": 45,
+      "heart_rate": 68,
+      "created_at": "2026-05-22T07:55:53.272Z"
+    }
+  ]
+}

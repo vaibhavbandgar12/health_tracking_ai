@@ -1,85 +1,117 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { Activity } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Activity, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const API_URL = 'http://localhost:8000';
-
-export default function Login({ setAuth }) {
-  const [isLogin, setIsLogin] = useState(true);
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+    setLoading(true);
+
     try {
-      if (isLogin) {
-        const formData = new URLSearchParams();
-        formData.append('username', email);
-        formData.append('password', password);
-        
-        const response = await axios.post(`${API_URL}/auth/login`, formData);
-        localStorage.setItem('token', response.data.access_token);
-        setAuth(true);
+      const success = await login(email, password);
+      if (success) {
+        navigate('/dashboard');
       } else {
-        await axios.post(`${API_URL}/auth/signup`, { email, password });
-        setIsLogin(true);
-        setError('Signup successful! Please login.');
+        setError('Invalid credentials. Please try again.');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'An error occurred');
+      setError('An unexpected error occurred. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="glass auth-card">
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-          <Activity size={48} className="text-gradient" />
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 relative">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full filter blur-[80px]" />
+      
+      <div className="glass max-w-md w-full p-8 relative z-10 space-y-6 shadow-2xl">
+        {/* Header Icon */}
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 animate-pulse">
+            <Activity className="text-primary w-8 h-8" />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-800 font-display">Welcome Back</h2>
+          <p className="text-sm text-slate-500">Log in to check your dynamic vitals and scores</p>
         </div>
-        <h1><span className="text-gradient">AI Health</span> Tracker</h1>
-        
-        {error && <div style={{ color: error.includes('successful') ? 'var(--accent)' : '#ef4444', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <div>
-            <label>Email Address</label>
-            <input 
-              type="email" 
-              required 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              placeholder="you@example.com"
-            />
+
+        {/* Error Notification */}
+        {error && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-800 p-3.5 rounded-xl text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
           </div>
-          <div>
-            <label>Password</label>
-            <input 
-              type="password" 
-              required 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              placeholder="••••••••"
-            />
+        )}
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="email">Email Address</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                <Mail className="w-4.5 h-4.5" />
+              </span>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-11"
+                placeholder="name@example.com"
+                disabled={loading}
+              />
+            </div>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-            {isLogin ? 'Sign In' : 'Create Account'}
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <label htmlFor="password">Password</label>
+              <a href="#forgot" className="text-xs text-primary hover:underline font-semibold">Forgot?</a>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                <Lock className="w-4.5 h-4.5" />
+              </span>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-11"
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            className="btn btn-primary w-full py-3 flex items-center justify-center gap-2 group mt-6"
+            disabled={loading}
+          >
+            <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+            {!loading && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
           </button>
         </form>
-        
-        <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-          </span>
-          <button 
-            className="btn-outline"
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', border: 'none' }}
-            onClick={() => setIsLogin(!isLogin)}
-          >
-            {isLogin ? 'Sign up' : 'Log in'}
-          </button>
+
+        {/* Footer Toggle links */}
+        <div className="text-center text-sm pt-2">
+          <span className="text-slate-500">Don't have an account? </span>
+          <Link to="/signup" className="text-primary hover:underline font-semibold">
+            Create account
+          </Link>
         </div>
       </div>
     </div>

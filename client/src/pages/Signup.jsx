@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity } from 'lucide-react';
-import api from '../services/api';
+import { Activity, User, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-export default function Signup({ setAuth }) {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+export default function Signup() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { signup } = useAuth();
   const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,79 +18,118 @@ export default function Signup({ setAuth }) {
     setLoading(true);
 
     try {
-      // NOTE: Using a placeholder API call, actual implementation will connect to backend route
-      const response = await api.post('/auth/signup', formData);
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        setAuth(true);
+      const success = await signup(name, email, password);
+      if (success) {
         navigate('/dashboard');
+      } else {
+        setError('Failed to create account. Please verify input fields.');
       }
     } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
       console.error(err);
-      setError('Signup failed. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="glass auth-card">
-        <div className="flex justify-center mb-6">
-          <div className="bg-primary/20 p-3 rounded-xl">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 relative">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 rounded-full filter blur-[80px]" />
+
+      <div className="glass max-w-md w-full p-8 relative z-10 space-y-6 shadow-2xl">
+        {/* Header Icon */}
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 animate-pulse">
             <Activity className="text-primary w-8 h-8" />
           </div>
+          <h2 className="text-3xl font-bold text-slate-800 font-display">Create Account</h2>
+          <p className="text-sm text-slate-500">Join AI HealthTrack and access personalized vitals diagnostics</p>
         </div>
-        <h1 className="text-3xl font-bold text-center mb-8">Create an Account</h1>
-        
-        {error && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-6 text-sm text-center">{error}</div>}
-        
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
+
+        {/* Error Notification */}
+        {error && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-800 p-3.5 rounded-xl text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Signup Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
             <label htmlFor="name">Full Name</label>
-            <input 
-              type="text" 
-              id="name" 
-              name="name" 
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="John Doe" 
-              required 
-            />
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                <User className="w-4.5 h-4.5" />
+              </span>
+              <input
+                id="name"
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="pl-11"
+                placeholder="John Doe"
+                disabled={loading}
+              />
+            </div>
           </div>
-          <div>
+
+          <div className="space-y-1.5">
             <label htmlFor="email">Email Address</label>
-            <input 
-              type="email" 
-              id="email" 
-              name="email" 
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com" 
-              required 
-            />
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                <Mail className="w-4.5 h-4.5" />
+              </span>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-11"
+                placeholder="name@example.com"
+                disabled={loading}
+              />
+            </div>
           </div>
-          <div>
+
+          <div className="space-y-1.5">
             <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
-              id="password" 
-              name="password" 
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••" 
-              required 
-            />
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                <Lock className="w-4.5 h-4.5" />
+              </span>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-11"
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
           </div>
-          
-          <button type="submit" className="btn btn-primary w-full mt-4" disabled={loading}>
-            {loading ? 'Creating account...' : 'Sign Up'}
+
+          <button 
+            type="submit" 
+            className="btn btn-primary w-full py-3 flex items-center justify-center gap-2 group mt-6"
+            disabled={loading}
+          >
+            <span>{loading ? 'Creating account...' : 'Create Account'}</span>
+            {!loading && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
           </button>
         </form>
-        
-        <p className="text-center text-slate-400 mt-6">
-          Already have an account? <Link to="/login" className="text-primary hover:underline">Log in</Link>
-        </p>
+
+        {/* Footer Toggle links */}
+        <div className="text-center text-sm pt-2">
+          <span className="text-slate-500">Already have an account? </span>
+          <Link to="/login" className="text-primary hover:underline font-semibold">
+            Log in
+          </Link>
+        </div>
       </div>
     </div>
   );
