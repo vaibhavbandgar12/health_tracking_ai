@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { jsPDF } from 'jspdf';
 import { 
   FileText, 
   Trash2, 
@@ -23,28 +24,294 @@ import {
 } from 'recharts';
 
 export default function Reports() {
-  const { history, deleteRecord } = useAuth();
+  const { user, history, deleteRecord } = useAuth();
   const [filterCount, setFilterCount] = useState(7);
 
   // Filter logs
   const filteredHistory = history.slice(0, filterCount);
 
   // Prepare Chart Data for Sleep and Hydration Trends
-  const trendData = [...filteredHistory].reverse().map(item => ({
-    date: new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-    sleep: item.sleep_hours,
-    water: item.water_intake || 2.0,
-    heart: item.heart_rate || 72
-  }));
+  const trendData = [...filteredHistory].reverse().map(item => {
+    const d = new Date(item.date);
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return {
+      date: `${dateStr} ${timeStr}`,
+      sleep: item.sleep_hours,
+      water: item.water_intake || 2.0,
+      heart: item.heart_rate || 72
+    };
+  });
 
   const handleExportData = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(history, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `ai_health_history_${new Date().toISOString().slice(0,10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    if (!history || history.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // Theme Colors matching the modern dashboard
+    const primaryColor = [79, 70, 229]; // Indigo #4f46e5
+    const textColorDark = [15, 23, 42]; // Slate 900 #0f172a
+    const textColorMuted = [100, 116, 139]; // Slate 500 #64748b
+    const borderColor = [226, 232, 240]; // Slate 200 #e2e8f0
+    const lightBgColor = [248, 250, 252]; // Slate 50 #f8fafc
+
+    // 1. Header Band
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+
+    // Header Text
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text("AI Health Tracking System", 15, 18);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text("Personalized Health & Vitals History Report", 15, 25);
+
+    // Right-aligned header metadata
+    const reportDateStr = new Date().toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    doc.setFontSize(10);
+    doc.text(`Generated: ${reportDateStr}`, pageWidth - 15, 18, { align: 'right' });
+    if (user && user.name) {
+      doc.text(`User: ${user.name} (${user.email || 'N/A'})`, pageWidth - 15, 25, { align: 'right' });
+    } else {
+      doc.text(`User ID: ${history[0]?.user_id || 'N/A'}`, pageWidth - 15, 25, { align: 'right' });
+    }
+
+    // 2. Summary Statistics Averages (from all history records)
+    const count = history.length;
+    const avgWeight = (history.reduce((sum, item) => sum + (item.weight || 0), 0) / count).toFixed(1);
+    const avgCalories = Math.round(history.reduce((sum, item) => sum + (item.calories_consumed || 0), 0) / count);
+    const avgSleep = (history.reduce((sum, item) => sum + (item.sleep_hours || 0), 0) / count).toFixed(1);
+    const avgExercise = Math.round(history.reduce((sum, item) => sum + (item.exercise_minutes || 0), 0) / count);
+    const avgWater = (history.reduce((sum, item) => sum + (item.water_intake || 2.0), 0) / count).toFixed(1);
+    const avgHeart = Math.round(history.reduce((sum, item) => sum + (item.heart_rate || 72), 0) / count);
+    const avgHealth = Math.round(history.reduce((sum, item) => sum + (item.health_risk_score || 0), 0) / count);
+
+    // Section Title
+    doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text("Health Dashboard & Vitals Summary", 15, 52);
+
+    // Draw Summary Grid Container
+    doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
+    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    doc.setLineWidth(0.3);
+    doc.rect(15, 57, pageWidth - 30, 32, 'FD');
+
+    // Summary Stats - 4 columns
+    const colWidth = (pageWidth - 30) / 4;
+    const colY = 64;
+
+    // Col 1: Health Score & Logs
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+    doc.text("Avg Health Score", 15 + 5, colY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text(`${avgHealth}`, 15 + 5, colY + 7);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+    doc.text(`Based on ${count} log entries`, 15 + 5, colY + 13);
+
+    // Col 2: Weight & Calories
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text("Avg Weight & Calories", 15 + colWidth + 5, colY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+    doc.text(`${avgWeight} kg`, 15 + colWidth + 5, colY + 6);
+    doc.text(`${avgCalories} kcal`, 15 + colWidth + 5, colY + 12);
+
+    // Col 3: Sleep & Exercise
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+    doc.text("Avg Sleep & Exercise", 15 + 2 * colWidth + 5, colY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+    doc.text(`${avgSleep} hrs`, 15 + 2 * colWidth + 5, colY + 6);
+    doc.text(`${avgExercise} mins`, 15 + 2 * colWidth + 5, colY + 12);
+
+    // Col 4: Water & Heart Rate
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+    doc.text("Avg Hydration & HR", 15 + 3 * colWidth + 5, colY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+    doc.text(`${avgWater} L / day`, 15 + 3 * colWidth + 5, colY + 6);
+    doc.text(`${avgHeart} bpm`, 15 + 3 * colWidth + 5, colY + 12);
+
+    // 3. Log History Table
+    doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text("Detailed Biometrics History Log", 15, 100);
+
+    // Column Definitions: label, width
+    const cols = [
+      { id: 'date', label: 'Date', width: 26 },
+      { id: 'bmi', label: 'BMI (Cat)', width: 30 },
+      { id: 'health', label: 'Health Score', width: 24 },
+      { id: 'weight', label: 'Weight', width: 18 },
+      { id: 'calories', label: 'Calories', width: 20 },
+      { id: 'sleep', label: 'Sleep', width: 16 },
+      { id: 'exercise', label: 'Exercise', width: 18 },
+      { id: 'water', label: 'Water', width: 14 },
+      { id: 'heart', label: 'HR', width: 14 }
+    ];
+
+    let currentY = 105;
+
+    // Helper to draw table header
+    const drawTableHeader = (y) => {
+      doc.setFillColor(51, 65, 85); // Slate 700
+      doc.rect(15, y, pageWidth - 30, 8, 'F');
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(255, 255, 255);
+
+      let xOffset = 15;
+      cols.forEach(col => {
+        const align = (col.id === 'date' || col.id === 'bmi') ? 'left' : 'center';
+        if (align === 'left') {
+          doc.text(col.label, xOffset + 2, y + 5.5);
+        } else {
+          doc.text(col.label, xOffset + col.width / 2, y + 5.5, { align: 'center' });
+        }
+        xOffset += col.width;
+      });
+    };
+
+    // Draw first header
+    drawTableHeader(currentY);
+    currentY += 8;
+
+    // Loop and draw rows
+    history.forEach((row, index) => {
+      // Check for page overflow
+      if (currentY + 8 > pageHeight - 15) {
+        doc.addPage();
+        
+        // Draw Page Header on new pages
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(0, 0, pageWidth, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text("AI Health Tracking Report - Log History", 15, 10);
+        
+        currentY = 25;
+        drawTableHeader(currentY);
+        currentY += 8;
+      }
+
+      // Zebra striping background color
+      if (index % 2 === 1) {
+        doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
+        doc.rect(15, currentY, pageWidth - 30, 8, 'F');
+      }
+
+      // Draw bottom horizontal border
+      doc.setDrawColor(241, 245, 249); // Slate 100
+      doc.line(15, currentY + 8, pageWidth - 15, currentY + 8);
+
+      // Render cells
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+
+      let xOffset = 15;
+      cols.forEach(col => {
+        let val = '';
+        if (col.id === 'date') {
+          val = new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+          doc.text(val, xOffset + 2, currentY + 5.5);
+        } else if (col.id === 'bmi') {
+          val = `${row.bmi || 'N/A'}`;
+          const cat = row.bmi_category || '';
+          doc.setFont('helvetica', 'bold');
+          doc.text(val, xOffset + 2, currentY + 5.5);
+          
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6.5);
+          doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+          doc.text(` (${cat})`, xOffset + 2 + doc.getTextWidth(val) + 1, currentY + 5.5);
+          doc.setFontSize(8.5); // restore
+          doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+        } else if (col.id === 'health') {
+          const score = row.health_risk_score || 0;
+          doc.setFont('helvetica', 'bold');
+          if (score >= 85) {
+            doc.setTextColor(16, 185, 129); // Emerald 500
+          } else if (score >= 70) {
+            doc.setTextColor(245, 158, 11); // Amber 500
+          } else {
+            doc.setTextColor(239, 68, 68); // Rose 500
+          }
+          doc.text(`${score}`, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+          doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+          doc.setFont('helvetica', 'normal');
+        } else if (col.id === 'weight') {
+          val = `${row.weight || 0} kg`;
+          doc.text(val, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+        } else if (col.id === 'calories') {
+          val = `${row.calories_consumed || 0}`;
+          doc.text(val, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+        } else if (col.id === 'sleep') {
+          val = `${row.sleep_hours || 0}h`;
+          doc.text(val, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+        } else if (col.id === 'exercise') {
+          val = `${row.exercise_minutes || 0}m`;
+          doc.text(val, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+        } else if (col.id === 'water') {
+          val = `${row.water_intake || 2.0}L`;
+          doc.text(val, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+        } else if (col.id === 'heart') {
+          val = `${row.heart_rate || 72}`;
+          doc.text(val, xOffset + col.width / 2, currentY + 5.5, { align: 'center' });
+        }
+        xOffset += col.width;
+      });
+
+      currentY += 8;
+    });
+
+    // Add page numbers at the footer of each page
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+      doc.text("AI Health Tracking System © 2026", 15, pageHeight - 8);
+    }
+
+    doc.save(`ai_health_report_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   return (

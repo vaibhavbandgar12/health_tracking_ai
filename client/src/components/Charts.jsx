@@ -19,11 +19,16 @@ export default function Charts({ data }) {
   }
 
   // Format data for Recharts (reverse to show chronological order left-to-right)
-  const chartData = [...data].reverse().map(item => ({
-    date: new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-    weight: item.weight,
-    calories: item.calories_consumed
-  }));
+  const chartData = [...data].reverse().map(item => {
+    const d = new Date(item.date);
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return {
+      date: `${dateStr} ${timeStr}`,
+      weight: item.weight,
+      calories: item.calories_consumed
+    };
+  });
 
   return (
     <div className="glass p-5 flex flex-col h-full">
